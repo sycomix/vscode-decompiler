@@ -52,7 +52,7 @@ conn = None
 
 def check_supplements():
     if not os.path.isfile("supplement.db"):
-        print(COLOR_OKGREEN + "Hello, is this your first Panoramix run?" + ENDC)
+        print(f"{COLOR_OKGREEN}Hello, is this your first Panoramix run?{ENDC}")
         print()
         print("I need to fetch the signatures database from the web")
         print("This will be done just once.")
@@ -131,19 +131,16 @@ def fetch_sigs(hash):
 
     results = c.fetchall()
 
-    res = []
-    for row in results:
-        res.append(
-            {
-                "hash": row[0],
-                "name": row[1],
-                "folded_name": row[2],
-                "params": json.loads(row[3]),
-                "cooccurs": row[4].split(","),
-            }
-        )
-
-    return res
+    return [
+        {
+            "hash": row[0],
+            "name": row[1],
+            "folded_name": row[2],
+            "params": json.loads(row[3]),
+            "cooccurs": row[4].split(","),
+        }
+        for row in results
+    ]
 
 
 @cached
@@ -255,17 +252,17 @@ def crawl_abis_from_cache():
 
                 name_ = r["name"]
                 if len(name_) == 0:
-                    name_ = "param" + str(param_counter)
+                    name_ = f"param{param_counter}"
 
                 if name_[0] != "_":
-                    name_ = "_" + name_
+                    name_ = f"_{name_}"
 
                 params.append({"type": r["type"], "name": name_})
 
                 if "tuple" not in type_:
                     inputs.append(type_)
                 else:
-                    type_ = f"({parse_inputs(r['components'])[0]})" + type_[5:]
+                    type_ = f"({parse_inputs(r['components'])[0]}){type_[5:]}"
                     inputs.append(type_)
 
             return ",".join(inputs), params

@@ -42,10 +42,10 @@ num_functions = len(l_functions)
 with open(dst, 'w') as f:
     for nr,function in enumerate(l_functions):
         sys.stderr.write("#DECOMPILE-PROGRESS,%d,%d,%s"%(nr+1, num_functions, function))
-        f.write("/* Function: %s */"%function)
+        f.write(f"/* Function: {function} */")
 
         # decompile each function
         tokengrp = decompinterface.decompileFunction(function, 0, ConsoleTaskMonitor())
-        
+
         f.write(str(tokengrp.getDecompiledFunction().getC()))
 sys.stderr.write("#DECOMPILE-STATUS,ok")

@@ -141,8 +141,7 @@ class IdaHelper(object):
     @staticmethod
     def get_imports():
         for i in xrange(0, idaapi.get_import_module_qty()):
-            name = idaapi.get_import_module_name(i)
-            if name:
+            if name := idaapi.get_import_module_name(i):
                 yield name
 
     @staticmethod
@@ -328,9 +327,8 @@ class IdaDecompileBatchController(object):
     def enumerate_import_images(self):
         for import_name in IdaHelper.get_imports():
             logger.debug("[i] trying to find image for %r" % import_name)
-            for image_path in glob.glob(os.path.join(self.target_dir, import_name) + '*'):
-                image_type = self.file_is_decompilable(image_path)
-                if image_type:
+            for image_path in glob.glob(f'{os.path.join(self.target_dir, import_name)}*'):
+                if image_type := self.file_is_decompilable(image_path):
                     logger.debug("[i] got image %r as %r" %
                                  (image_path, image_type))
                     yield image_type, os.path.split(image_path)[1], image_path
@@ -343,8 +341,7 @@ class IdaDecompileBatchController(object):
                 fpath = os.path.join(root, name)
                 logger.debug("[+] checking %r" % fpath)
                 try:
-                    ftype = self.file_is_decompilable(fpath)
-                    if ftype:
+                    if ftype := self.file_is_decompilable(fpath):
                         logger.debug("[+] is candidate %r" % [fpath, ftype])
                         yield ftype, name, fpath
                 except IOError:
@@ -365,7 +362,7 @@ class IdaDecompileBatchController(object):
         # target is a directory
         if os.path.isdir(target):
             fname, fext = os.path.splitext(self.target_file)
-            return '%s.c' % os.path.join(target, fname)
+            return f'{os.path.join(target, fname)}.c'
         # target is not a directory
         root, fname = os.path.split(target)
         if fname:
@@ -377,14 +374,14 @@ class IdaDecompileBatchController(object):
         # suggested_outpath = '%s.c'%os.path.join(root,fname)
         # if not os.path.exists(suggested_outpath):
         #    return suggested_outpath
-        return '%s.c' % os.path.join(root, fname)
+        return f'{os.path.join(root, fname)}.c'
 
     def exec_ida_batch_decompile(self, target, output, annotate_stackvar_size, annotate_xrefs, imports, recursive,
                                  experimental_decomile_cgraph):
         logger.debug("[+] batch decompile %r" % target)
         # todo: pass commandlines,
         # todo parse commandline
-        script_args = ['--output=%s' % output]
+        script_args = [f'--output={output}']
         if annotate_stackvar_size:
             script_args.append("--annotate-stackvar-size")
         if annotate_xrefs:
@@ -397,7 +394,7 @@ class IdaDecompileBatchController(object):
             script_args.append("--experimental-decompile-cgraph")
 
         script_args = ['\\"%s\\"' % a for a in script_args]
-        command = "%s %s" % (self.my_path, ' '.join(script_args))
+        command = f"{self.my_path} {' '.join(script_args)}"
         self._exec_ida_batch(target, command)
 
     def _exec_ida_batch(self, target, command):
@@ -417,8 +414,15 @@ class IdaDecompileBatchController(object):
         -S  ..  execute script
         '''
         #temp_path = os.path.join(self.temp_path, os.path.splitext(os.path.split(target)[1])[0] + '.idb')
-        cmd = [ida_exe, '-B', '-M', '-c', '-o"%s"' %
-               self.temp_path if self.temp_path else '', '-S"%s"' % command, '"' + target + '"']
+        cmd = [
+            ida_exe,
+            '-B',
+            '-M',
+            '-c',
+            f'-o"{self.temp_path}"' if self.temp_path else '',
+            f'-S"{command}"',
+            f'"{target}"',
+        ]
         logger.debug(' '.join(cmd))
         logger.debug('[+] executing: %r' % cmd)
         # return 0
@@ -454,8 +458,7 @@ class TestEmbeddedChooserClass(Choose, Choose2):
         return self.items[n]
 
     def OnGetSize(self):
-        n = len(self.items)
-        return n
+        return len(self.items)
 
     def OnRefresh(self, n):
         print "refresh %s" % n
@@ -626,9 +629,6 @@ if idaapi.IDA_SDK_VERSION >= 700:
         def update(self, ctx):
             return idaapi.AST_ENABLE_ALWAYS
 
-            def update(self, ctx):
-                return idaapi.AST_ENABLE_ALWAYS
-
 
 class IdaDecompileBatchPlugin(idaapi.plugin_t):
     """ IDA Plugin Base"""
@@ -641,15 +641,12 @@ class IdaDecompileBatchPlugin(idaapi.plugin_t):
     wanted_menu_id = 'tintinweb:batchdecompile'
 
     def init(self):
-        NO_HOTKEY = ""
-        SETMENU_INS = 0
         NO_ARGS = tuple()
 
-        logger.debug("[+] %s.init()" % self.__class__.__name__)
+        logger.debug(f"[+] {self.__class__.__name__}.init()")
         self.menuitems = []
 
-        logger.debug("[+] setting up menus for ida version %s" %
-                     idaapi.IDA_SDK_VERSION)
+        logger.debug(f"[+] setting up menus for ida version {idaapi.IDA_SDK_VERSION}")
 
         if idaapi.IDA_SDK_VERSION >= 700:
             # >= 700
@@ -660,6 +657,8 @@ class IdaDecompileBatchPlugin(idaapi.plugin_t):
                 ''.join(self.wanted_menu), "tintinweb:batchdecompile:load", idaapi.SETMENU_APP)
 
         else:
+            NO_HOTKEY = ""
+            SETMENU_INS = 0
             menu = idaapi.add_menu_item(self.wanted_menu[0],
                                         self.wanted_menu[1],
                                         NO_HOTKEY,
@@ -672,16 +671,16 @@ class IdaDecompileBatchPlugin(idaapi.plugin_t):
         return idaapi.PLUGIN_KEEP
 
     def run(self, arg=None):
-        logger.debug("[+] %s.run()" % self.__class__.__name__)
+        logger.debug(f"[+] {self.__class__.__name__}.run()")
 
     def term(self):
-        logger.debug("[+] %s.term()" % self.__class__.__name__)
+        logger.debug(f"[+] {self.__class__.__name__}.term()")
         if idaapi.IDA_SDK_VERSION < 700:
             for menu in self.menuitems:
                 idaapi.del_menu_item(menu)
 
     def menu_config(self):
-        logger.debug("[+] %s.menu_config()" % self.__class__.__name__)
+        logger.debug(f"[+] {self.__class__.__name__}.menu_config()")
         self.idbctrl._init_target()  # force target reinit
         DecompileBatchForm(self.idbctrl).Execute()
 
@@ -747,17 +746,17 @@ def PLUGIN_ENTRY(mode=None):
         plugin = IdaDecompileBatchPlugin()
         plugin.set_ctrl(idbctrl=idbctrl)
         plugin.init()
-        logger.info("[i] %s loaded, see Menu: %s" % (IdaDecompileBatchPlugin.wanted_name,
-                                                     IdaDecompileBatchPlugin.wanted_menu))
-        # plugin.menu_config()
-        return plugin
-
+        logger.info(
+            f"[i] {IdaDecompileBatchPlugin.wanted_name} loaded, see Menu: {IdaDecompileBatchPlugin.wanted_menu}"
+        )
     else:
         logger.debug("[+] Mode: plugin")
         # PluginMode
         plugin = IdaDecompileBatchPlugin()
         plugin.set_ctrl(idbctrl=idbctrl)
-        return plugin
+
+    # plugin.menu_config()
+    return plugin
 
 
 if __name__ == '__main__':

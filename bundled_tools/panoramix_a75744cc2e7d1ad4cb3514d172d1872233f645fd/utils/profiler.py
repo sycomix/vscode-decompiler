@@ -83,11 +83,6 @@ def checkpoint_start():
 
 def log_checkpoints():
     return
-    for name, elapsed in results.items():
-        logger.info(f"Profiler: {name}\t\t- {elapsed / 1000000000}")
-
-    for name, elapsed in counters.items():
-        logger.info(f"Profiler: {name}\t\t- {elapsed}")
 
 
 print_checkpoints = log_checkpoints

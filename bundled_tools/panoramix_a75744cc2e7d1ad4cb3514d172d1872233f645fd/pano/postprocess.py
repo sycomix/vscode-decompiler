@@ -68,9 +68,9 @@ def cleanup_mul_1(trace):
                 return cleanup_exp(exp[2])
             else:
                 assert len(exp) > 3, exp
-                return ("mul",) + tuple([cleanup_exp(x) for x in exp[2:]])
+                return ("mul",) + tuple(cleanup_exp(x) for x in exp[2:])
 
-        return tuple([cleanup_exp(x) for x in exp])
+        return tuple(cleanup_exp(x) for x in exp)
 
     res = []
 

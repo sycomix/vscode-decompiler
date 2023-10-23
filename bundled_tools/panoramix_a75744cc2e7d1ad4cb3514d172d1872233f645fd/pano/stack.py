@@ -63,10 +63,7 @@ class Stack(EasyCopy):
         return ret
 
     def peek(self):
-        if self.len() > 0:
-            return self.stack[-1]
-        else:
-            return None
+        return self.stack[-1] if self.len() > 0 else None
 
     def append(self, el):
         assert el is not None, self.stack
@@ -113,17 +110,15 @@ class Stack(EasyCopy):
 
     def jump_dests(self, jump_dests):
 
-        res = []
-
-        for el in self.stack:
+        return [
+            str(el)
+            for el in self.stack
             if (
                 type(el) == int
                 and el in jump_dests
                 or (type(el) == int and el > 2000 and el < 5000)
-            ):
-                res.append(str(el))
-
-        return res
+            )
+        ]
 
     simplify_cache = {}
 
@@ -155,26 +150,21 @@ class Stack(EasyCopy):
             right = exp[2]
 
         if op == "and":
-            left_mask = to_mask(left)
-
-            if left_mask:
+            if left_mask := to_mask(left):
                 (m1, m2) = left_mask
                 exp = mask_op(right, m1, m2)
 
-            else:  # could be 'elif to_mask(right)', but that's slower bc we have to call to_mask twice then
-                right_mask = to_mask(right)
+            elif right_mask := to_mask(right):
+                (m1, m2) = right_mask
+                exp = mask_op(left, m1, m2)
 
-                if right_mask:
-                    (m1, m2) = right_mask
-                    exp = mask_op(left, m1, m2)
+            elif to_neg_mask(left):
+                bounds = to_neg_mask(left)
+                exp = neg_mask_op(right, *bounds)
 
-                elif to_neg_mask(left):
-                    bounds = to_neg_mask(left)
-                    exp = neg_mask_op(right, *bounds)
-
-                elif to_neg_mask(right):
-                    bounds = to_neg_mask(right)
-                    exp = neg_mask_op(left, *bounds)
+            elif to_neg_mask(right):
+                bounds = to_neg_mask(right)
+                exp = neg_mask_op(left, *bounds)
 
         elif op == "div" and len(exp) == 3 and to_exp2(right):
             shift = to_exp2(right)
@@ -197,17 +187,9 @@ class Stack(EasyCopy):
         for i, s in enumerate(stack):
             if type(stack[i]) == tuple:
                 if s[0] == "lt" and type(s[1]) == int and type(s[2]) == int:
-                    if s[1] < s[2]:
-                        stack[i] = ("bool", 1)
-                    else:
-                        stack[i] = ("bool", 0)
-
+                    stack[i] = ("bool", 1) if s[1] < s[2] else ("bool", 0)
                 elif s[0] == "iszero" and type(s[1]) == int:
-                    if s[1] == 0:
-                        stack[i] = ("bool", 1)
-                    else:
-                        stack[i] = ("bool", 0)
-
+                    stack[i] = ("bool", 1) if s[1] == 0 else ("bool", 0)
                 elif (
                     s[0] == "iszero" and opcode(s[1]) == "bool" and type(s[1][1]) == int
                 ):

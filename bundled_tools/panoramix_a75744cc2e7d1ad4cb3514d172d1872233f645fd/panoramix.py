@@ -178,20 +178,18 @@ def decompile(this_addr, only_func_name=None):
 
     if len(loader.lines) == 0:
         this_fname = cache_fname(this_addr, "pan")
-        f = open(this_fname, "w")
-        with redirect_stdout(f):
-            print()
-            print(C.gray + "#")
-            print(f"#  Panoramix {VER} ")
-            print("#  Address " + C.end + loader.addr + C.gray)
-            print("# ")
-            print("#  There seems to be no bytecode for this address. ")
-            print("#  It's either not a contract, or it's been destroyed.")
-            print("#  ")
-            print("#  If you think it's an error, e-mail kolinko@gmail.com ")
-            print("# " + C.end)
-
-        f.close()
+        with open(this_fname, "w") as f:
+            with redirect_stdout(f):
+                print()
+                print(f"{C.gray}#")
+                print(f"#  Panoramix {VER} ")
+                print(f"#  Address {C.end}{loader.addr}{C.gray}")
+                print("# ")
+                print("#  There seems to be no bytecode for this address. ")
+                print("#  It's either not a contract, or it's been destroyed.")
+                print("#  ")
+                print("#  If you think it's an error, e-mail kolinko@gmail.com ")
+                print(f"# {C.end}")
 
         if "--silent" not in sys.argv:
             print(open(this_fname).read())
@@ -219,7 +217,7 @@ def decompile(this_addr, only_func_name=None):
             # skip all the functions that are not it
             continue
 
-        logger.info(f"Parsing %s...", fname)
+        logger.info("Parsing %s...", fname)
         logger.debug("stack %s", stack)
 
         try:
@@ -299,113 +297,111 @@ def decompile(this_addr, only_func_name=None):
     """
 
     this_fname = cache_fname(this_addr, "pan")
-    pan_fd = open(this_fname, "w")
-    with redirect_stdout(pan_fd):
+    with open(this_fname, "w") as pan_fd:
+        with redirect_stdout(pan_fd):
 
-        """
+            """
             Print out decompilation header
         """
 
-        assert (
-            loader.network != "none"
-        )  # otherwise, the code is empty, and we caught it before
+            assert (
+                loader.network != "none"
+            )  # otherwise, the code is empty, and we caught it before
 
-        print(C.gray + "#")
-        print(f"#  Panoramix {VER} ")
-        print("# " + C.end)
+            print(f"{C.gray}#")
+            print(f"#  Panoramix {VER} ")
+            print(f"# {C.end}")
 
-        if len(problems) > 0:
-            print(C.gray + "#")
-            print("#  I failed with these: ")
-            for p in problems.values():
-                print(f"{C.end}{C.gray}#  - {C.end}{C.fail}{p}{C.end}{C.gray}")
-            print("#  All the rest is below.")
-            print("#" + C.end)
+            if problems:
+                print(f"{C.gray}#")
+                print("#  I failed with these: ")
+                for p in problems.values():
+                    print(f"{C.end}{C.gray}#  - {C.end}{C.fail}{p}{C.end}{C.gray}")
+                print("#  All the rest is below.")
+                print(f"#{C.end}")
 
-        print()
+            print()
 
-        """
+            """
             Print out constants & storage
         """
 
-        shown_already = set()
+            shown_already = set()
 
-        for func in contract.consts:
-            shown_already.add(func.hash)
-            print(func.print())
+            for func in contract.consts:
+                shown_already.add(func.hash)
+                print(func.print())
 
-        if shown_already:
-            print()
+            if shown_already:
+                print()
 
-        if len(contract.stor_defs) > 0:
-            print(f"{C.green}def {C.end}storage:")
+            if len(contract.stor_defs) > 0:
+                print(f"{C.green}def {C.end}storage:")
 
-            for s in contract.stor_defs:
-                print(pretty_type(s))
+                for s in contract.stor_defs:
+                    print(pretty_type(s))
 
-            print()
+                print()
 
-        """
+            """
             Print out getters
         """
 
-        for hash, func in functions.items():
-            if func.getter is not None:
-                shown_already.add(hash)
-                print(func.print())
+            for hash, func in functions.items():
+                if func.getter is not None:
+                    shown_already.add(hash)
+                    print(func.print())
 
-                if "--repr" in sys.argv:
+                    if "--repr" in sys.argv:
+                        print()
+                        pprint_repr(func.trace)
+
                     print()
-                    pprint_repr(func.trace)
 
-                print()
-
-        """
+            """
             Print out regular functions
         """
 
-        func_list = list(contract.functions)
-        func_list.sort(
-            key=lambda f: f.priority()
-        )  # sort func list by length, with some caveats
+            func_list = list(contract.functions)
+            func_list.sort(
+                key=lambda f: f.priority()
+            )  # sort func list by length, with some caveats
 
-        if any(1 for f in func_list if f.hash not in shown_already):
-            if shown_already:
-                # otherwise no irregular functions, so this is not needed :)
-                print(C.gray + "#\n#  Regular functions\n#" + C.end + "\n")
-        else:
-            print(
-                "\n"
-                + C.gray
-                + "#\n#  No regular functions. That's it.\n#"
-                + C.end
-                + "\n\n"
-            )
+            if any(1 for f in func_list if f.hash not in shown_already):
+                if shown_already:
+                    # otherwise no irregular functions, so this is not needed :)
+                    print(C.gray + "#\n#  Regular functions\n#" + C.end + "\n")
+            else:
+                print(
+                    "\n"
+                    + C.gray
+                    + "#\n#  No regular functions. That's it.\n#"
+                    + C.end
+                    + "\n\n"
+                )
 
-        for func in func_list:
-            hash = func.hash
+            for func in func_list:
+                hash = func.hash
 
-            if hash not in shown_already:
-                shown_already.add(hash)
+                if hash not in shown_already:
+                    shown_already.add(hash)
 
-                print(func.print())
+                    print(func.print())
 
-                if "--returns" in sys.argv:
-                    for r in func.returns:
-                        print(r)
+                    if "--returns" in sys.argv:
+                        for r in func.returns:
+                            print(r)
 
-                if "--repr" in sys.argv:
-                    pprint_repr(func.orig_trace)
+                    if "--repr" in sys.argv:
+                        pprint_repr(func.orig_trace)
 
-                print()
+                    print()
 
-    """
+        """
 
         Wrap up
 
     """
-
-    pan_fd.close()
 
     if "--silent" not in sys.argv:
         print("\n")
@@ -413,9 +409,7 @@ def decompile(this_addr, only_func_name=None):
 
 
 def decompile_bulk(addr_list):
-    i = 0
-    for addr in addr_list:
-        i += 1
+    for i, addr in enumerate(addr_list, start=1):
         print(f"{i}, {addr}")
         decompile(addr)
 
@@ -425,6 +419,7 @@ def decompile_bulk(addr_list):
     Command line initialisation
 
 """
+
 
 bulk_list = None
 function_name = None
@@ -476,9 +471,5 @@ else:
         this_addr = addr_shortcuts[this_addr.lower()]
 
     if len(sys.argv) > 2:
-        if not sys.argv[2].startswith("--"):
-            function_name = sys.argv[2]
-        else:
-            function_name = None
-
+        function_name = sys.argv[2] if not sys.argv[2].startswith("--") else None
     decompile(this_addr, function_name)

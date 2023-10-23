@@ -35,9 +35,7 @@ def code_fetch(address, network="mainnet"):
 
     from web3.auto import w3
 
-    code = w3.eth.getCode(address).hex()[2:]
-
-    return code
+    return w3.eth.getCode(address).hex()[2:]
 
 
 class Loader(EasyCopy):
@@ -66,19 +64,11 @@ class Loader(EasyCopy):
             return None
 
         # duplicate of get_func_name from signatures
-        if "params" in a:
-            res = "{}({})".format(
-                a["name"],
-                ", ".join(
-                    [
-                        colorize(x["type"], COLOR_GRAY, add_color) + " " + x["name"][1:]
-                        for x in a["params"]
-                    ]
-                ),
-            )
-        else:
-            res = a["folded_name"]
-
+        res = (
+            f'{a["name"]}({", ".join([colorize(x["type"], COLOR_GRAY, add_color) + " " + x["name"][1:] for x in a["params"]])})'
+            if "params" in a
+            else a["folded_name"]
+        )
         cache_sigs[add_color][sig] = res
         return res
 
@@ -124,7 +114,7 @@ class Loader(EasyCopy):
         fname = None
         code = None
 
-        dir_name = "cache_code/" + address[:5] + "/"
+        dir_name = f"cache_code/{address[:5]}/"
 
         assure_dir_exists(dir_name)
 
@@ -217,22 +207,19 @@ class Loader(EasyCopy):
         while i not in self.lines and self.last_line > i:
             i += 1
 
-        if i <= self.last_line:
-            return i
-        else:
-            return None
+        return i if i <= self.last_line else None
 
     def add_func(self, target, hash=None, name=None, stack=()):
 
         assert hash is not None or name is not None  # we need at least one
-        assert not (hash is not None and name is not None)  # we don't want both
+        assert hash is None or name is None
 
         if hash is not None:
             padded = padded_hex(hash, 8)  # lines[i-12][2]
             if padded in self.signatures:
                 name = self.signatures[padded]
             else:
-                name = "unknown_{}(?????)".format(padded)
+                name = f"unknown_{padded}(?????)"
                 self.signatures[padded] = name
 
         if hash is None:
@@ -254,7 +241,7 @@ class Loader(EasyCopy):
             source = source[2:]
 
         while len(source[:2]) > 0:
-            num = int("0x" + source[:2], 16)
+            num = int(f"0x{source[:2]}", 16)
             self.binary.append(num)
             stack = [num] + stack
             source = source[2:]
@@ -283,7 +270,7 @@ class Loader(EasyCopy):
                     num_words = int(op[4:])
 
                     param = 0
-                    for i in range(num_words):
+                    for _ in range(num_words):
                         try:
                             param = param * 0x100 + stack.pop()
                             line += 1

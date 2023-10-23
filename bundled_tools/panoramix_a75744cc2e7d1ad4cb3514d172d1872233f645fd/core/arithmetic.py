@@ -29,59 +29,33 @@ UINT_256_MAX = 2 ** 256 - 1
 
 
 def to_real_int(exp):
-    if type(exp) == int and get_bit(exp, 255):
-        return -sub(0, exp)
-    else:
-        return exp
+    return -sub(0, exp) if type(exp) == int and get_bit(exp, 255) else exp
 
 
 def unsigned_to_signed(value):
-    if value <= UINT_255_MAX:
-        return value
-    else:
-        return value - UINT_256_CEILING
+    return value if value <= UINT_255_MAX else value - UINT_256_CEILING
 
 
 def simplify_bool(exp):
     if opcode(exp) == "iszero":
         inside = simplify_bool(exp[1])
 
-        if opcode(inside) == "iszero":
-            return inside[1]
-        else:
-            # this had a bug and it went on unnoticed. does this check ever get executed?
-            return is_zero(inside)
-
-    if opcode(exp) == "bool":
-        return exp[1]
-
-    return exp
+        return inside[1] if opcode(inside) == "iszero" else is_zero(inside)
+    return exp[1] if opcode(exp) == "bool" else exp
 
 
 def and_op(*args):
     assert len(args) > 1
     left = args[0]
 
-    if len(args) > 2:
-        right = and_op(*args[1:])
-    else:
-        right = args[1]
-
+    right = and_op(*args[1:]) if len(args) > 2 else args[1]
     if type(left) == int and type(right) == int:
         return left & right
 
     res = tuple()
 
-    if opcode(left) == "and":
-        res += left[1:]
-    else:
-        res += (left,)
-
-    if opcode(right) == "and":
-        res += right[1:]
-    else:
-        res += (right,)
-
+    res += left[1:] if opcode(left) == "and" else (left, )
+    res += right[1:] if opcode(right) == "and" else (right, )
     return ("and",) + res
 
 
@@ -90,9 +64,7 @@ def comp_bool(left, right):
         return True
     if left == ("bool", right):
         return True
-    if ("bool", left) == right:
-        return True
-    return None
+    return True if ("bool", left) == right else None
 
 
 def is_zero(exp):
@@ -114,15 +86,11 @@ def is_zero(exp):
         return is_zero(exp[1])
 
     if opcode(exp) == "or":
-        res = []
-        for r in exp[1:]:
-            res.append(is_zero(r))
+        res = [is_zero(r) for r in exp[1:]]
         return and_op(*res)
 
     if opcode(exp) == "and":
-        res = []
-        for r in exp[1:]:
-            res.append(is_zero(r))
+        res = [is_zero(r) for r in exp[1:]]
         return algebra.or_op(*res)
 
     if opcode(exp) == "le":
@@ -146,10 +114,7 @@ def is_zero(exp):
     if opcode(exp) == "sge":
         return ("slt", exp[1], exp[2])
 
-    if opcode(exp) == "sgt":
-        return ("sle", exp[1], exp[2])
-
-    return ("iszero", exp)
+    return ("sle", exp[1], exp[2]) if opcode(exp) == "sgt" else ("iszero", exp)
 
 
 def eval_bool(exp, known_true=True, symbolic=True):
@@ -195,11 +160,7 @@ def eval_bool(exp, known_true=True, symbolic=True):
     if not symbolic:
         r = eval(exp)
 
-        if type(r) == int:
-            return r != 0
-
-        return None
-
+        return r != 0 if type(r) == int else None
     if opcode(exp) == "le":
         left = eval(exp[1])
         right = eval(exp[2])
@@ -292,24 +253,15 @@ def add(left, right):
 
 
 def addmod(left, right, mode):
-    if mod == 0:
-        return 0
-    else:
-        return (left + right) % mod
+    return 0 if mod == 0 else (left + right) % mod
 
 
 def sub(left, right):
-    if left == right:
-        return 0
-    else:
-        return (left - right) & UINT_256_MAX
+    return 0 if left == right else (left - right) & UINT_256_MAX
 
 
 def mod(value, mod):
-    if mod == 0:
-        return 0
-    else:
-        return value % mod
+    return 0 if mod == 0 else value % mod
 
 
 def smod(value, mod):
@@ -317,30 +269,21 @@ def smod(value, mod):
 
     pos_or_neg = -1 if value < 0 else 1
 
-    if mod == 0:
-        return 0
-
-    return (abs(value) % abs(mod) * pos_or_neg) & UINT_256_MAX
+    return 0 if mod == 0 else (abs(value) % abs(mod) * pos_or_neg) & UINT_256_MAX
 
 
 def mul(left, right):
-    if left == 0 or right == 0:
-        return 0
-    return (left * right) & UINT_256_MAX
+    return 0 if left == 0 or right == 0 else (left * right) & UINT_256_MAX
 
 
 def mulmod(left, right, mod):
-    if mod == 0:
-        return 0
-    return (left * right) % mod
+    return 0 if mod == 0 else (left * right) % mod
 
 
 def div(numerator, denominator):
     if numerator == 0:
         return 0
-    if denominator == 0:
-        return 0
-    return (numerator // denominator) & UINT_256_MAX
+    return 0 if denominator == 0 else (numerator // denominator) & UINT_256_MAX
 
 
 def not_op(exp):
@@ -350,10 +293,10 @@ def not_op(exp):
 def sdiv(numerator, denominator):
     numerator, denominator = map(unsigned_to_signed, (numerator, denominator),)
 
-    pos_or_neg = -1 if numerator * denominator < 0 else 1
-
     if denominator == 0:
         return 0
+
+    pos_or_neg = -1 if numerator * denominator < 0 else 1
 
     return pos_or_neg * (abs(numerator) // abs(denominator))
 
@@ -370,31 +313,25 @@ def exp(base, exponent):
 
 def signextend(bits, value):
 
-    if bits <= 31:
-        testbit = bits * 8 + 7
-        sign_bit = 1 << testbit
-        if value & sign_bit:
-            return value | (UINT_256_CEILING - sign_bit)
-        else:
-            return value & (sign_bit - 1)
-    else:
+    if bits > 31:
         return value
+    testbit = bits * 8 + 7
+    sign_bit = 1 << testbit
+    return (
+        value | (UINT_256_CEILING - sign_bit)
+        if value & sign_bit
+        else value & (sign_bit - 1)
+    )
 
 
 def shl(shift_length, value):
 
-    if shift_length >= 256:
-        return 0
-    else:
-        return (value << shift_length) & UINT_256_MAX
+    return 0 if shift_length >= 256 else (value << shift_length) & UINT_256_MAX
 
 
 def shr(shift_length, value):
 
-    if shift_length >= 256:
-        return 0
-    else:
-        return (value >> shift_length) & UINT_256_MAX
+    return 0 if shift_length >= 256 else (value >> shift_length) & UINT_256_MAX
 
 
 def sar(shift_length, value):
@@ -434,9 +371,7 @@ def xor(left, right):
 
 
 def byte_op(position, value):
-    if position >= 32:
-        return 0
-    return (value // pow(256, 31 - position)) % 256
+    return 0 if position >= 32 else (value // pow(256, 31 - position)) % 256
 
 
 def lt(left, right):
@@ -493,10 +428,7 @@ def eval(exp):
         if type(p) != int:
             return exp
 
-    if exp[0] in opcodes:
-        return opcodes[exp[0]](*exp[1:])
-
-    return exp
+    return opcodes[exp[0]](*exp[1:]) if exp[0] in opcodes else exp
 
 
 opcodes.update(

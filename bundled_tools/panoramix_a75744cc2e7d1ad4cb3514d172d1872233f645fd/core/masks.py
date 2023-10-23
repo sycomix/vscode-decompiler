@@ -30,10 +30,7 @@ def type_to_mask(s):
         "uint": 256,
     }
 
-    if s in lookup:
-        return lookup[s]
-    else:
-        return None
+    return lookup.get(s, None)
 
 
 def mask_to_type(num, force=False):
@@ -60,9 +57,9 @@ def mask_to_type(num, force=False):
 
     elif force:
         if num > 256:
-            return "big" + str(num)
+            return f"big{str(num)}"
 
-        for mask, res in lookup.items():
+        for mask in lookup:
             if mask > num:
                 return lookup[mask]
 
@@ -118,7 +115,7 @@ def to_mask(num):
     if opcode(num) == "sub":
         if opcode(num[1]) == "exp" and num[2] == 1:
             mul = to_exp2(num[1][1])
-            if mul == None:
+            if mul is None:
                 return None
 
             mask_pos = 0

@@ -24,13 +24,10 @@ import tokenize
 def translate(readline):
     prev_type = None
     prev_name = None
-    tokens = []
-    for t in tokenize.tokenize(readline):
-        tokens.append((t[0], t[1], t[2][0], t[3][0]))
-
+    tokens = [(t[0], t[1], t[2][0], t[3][0]) for t in tokenize.tokenize(readline)]
     last_line = 1
 
-    while len(tokens) > 0:
+    while tokens:
         type, name, line_no, end_line_no = tokens.pop(0)
 
         if type in (NL, NEWLINE):
@@ -69,7 +66,7 @@ def translate(readline):
             out_str = " and ".join(
                 f"({r})" if r != "is not None" else r for r in ruleset
             )
-            yield STRING, " is not None and (" + out_str + ")"
+            yield (STRING, f" is not None and ({out_str})")
 
         else:
             yield type, name
@@ -80,12 +77,11 @@ def translate(readline):
 
 def make_ruleset(tuples, base):
 
-    res = []
-    res.append(f"type({base}) == tuple")
+    res = [f"type({base}) == tuple"]
     tuples = list(tuples)
 
     last = tuples[-1]
-    if last[0] == "..." or last[0] == "*":
+    if last[0] in ["...", "*"]:
         res.append(f"len({base}) >= {len(tuples)-1}")  # ... means 0 or more ending args
         if last[1] is not None:
             res.append(
@@ -107,9 +103,6 @@ def make_ruleset(tuples, base):
 
         if type(t[1]) == str:
             res.append(f"({t[1]} := {el_id}) or True")  # otherwise it fails for 0
-        elif type(t[1]) == tuple:
-            pass  # skipping for now
-
         if t[2] is not None:
             res.append(f"{el_id} == {t[2]}")
 

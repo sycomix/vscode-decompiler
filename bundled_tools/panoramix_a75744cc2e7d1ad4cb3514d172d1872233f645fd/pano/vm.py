@@ -58,11 +58,7 @@ def mem_load(pos, size=32):
 def find_nodes(node, f):
     assert type(node) == Node
 
-    if f(node):
-        res = [node]
-    else:
-        res = []
-
+    res = [node] if f(node) else []
     for n in node.next:
         res.extend(find_nodes(n, f))
 
@@ -124,9 +120,10 @@ class Node:
 
         begin_vars = []
         if self.is_label():
-            for _, var_idx, var_val, _ in self.label.begin_vars:
-                begin_vars.append(("setvar", var_idx, var_val))
-
+            begin_vars.extend(
+                ("setvar", var_idx, var_val)
+                for _, var_idx, var_val, _ in self.label.begin_vars
+            )
         if self.vm.just_fdests and self.trace != [("revert", 0)]:
             t = self.trace[0]
             if match(t, ("jump", ":target_node", ...)):
@@ -234,9 +231,8 @@ class VM(EasyCopy):
 
         """
 
-        for j in range(20):  # 20
-
-            for i in range(200):  # 300
+        for _ in range(20):
+            for _ in range(200):
                 """
 
                     Find all the jumps, and expand them until
@@ -331,7 +327,7 @@ class VM(EasyCopy):
                     sv = ("setvar", var_idx, stack[stack_pos])
                     set_vars.append(sv)
 
-                if len(list(set_vars)) == 0:
+                if not list(set_vars):
                     folded, var_list = fold_stacks(
                         old_stack, stack, loop_dest.label.depth
                     )
@@ -360,13 +356,12 @@ class VM(EasyCopy):
                 return [("invalid", "jumdest", i)]
 
         if not safe:
-            if lines[i][1] == "jumpdest":
-                i = self.loader.next_line(i)
-                if i not in lines:
-                    return [("invalid", "eof?")]
-            else:
+            if lines[i][1] != "jumpdest":
                 return [("invalid", "jump")]
 
+            i = self.loader.next_line(i)
+            if i not in lines:
+                return [("invalid", "eof?")]
         while True:
             line = lines[i]
 
@@ -482,11 +477,9 @@ class VM(EasyCopy):
             if bool_condition is not None:
                 if bool_condition:
                     trace.append(("jump", n_true))
-                    return trace  # res, False
-
                 else:
                     trace.append(("jump", n_false))
-                    return trace
+                return trace  # res, False
 
             trace.append(("if", if_condition, n_true, n_false,))
             logger.debug("jumpi -> if %s", trace[-1])
@@ -537,14 +530,14 @@ class VM(EasyCopy):
         previous_len = stack.len()
 
         if "--verbose" in sys.argv or "--explain" in sys.argv:
-            trace(C.asm("       " + str(stack)))
+            trace(C.asm(f"       {str(stack)}"))
             trace("")
 
             if "push" not in op and "dup" not in op and "swap" not in op:
                 trace("[{}] {}", line[0], C.asm(op))
             else:
                 if type(line[2]) == str:
-                    trace("[{}] {} {}", line[0], C.asm(op), C.asm(" ”" + line[2] + "”"))
+                    trace("[{}] {} {}", line[0], C.asm(op), C.asm(f" ”{line[2]}”"))
                 elif line[2] > 0x1000000000:
                     trace("[{}] {} {}", line[0], C.asm(op), C.asm(hex(line[2])))
                 else:
@@ -980,7 +973,7 @@ class VM(EasyCopy):
             trace(("precompiled", var_name, precompiled[addr], args))
             trace(("setmem", ("range", ret_start, ret_len), ("var", var_name)))
 
-            stack.append("{}.result".format(precompiled[addr]))
+            stack.append(f"{precompiled[addr]}.result")
 
         else:
             assert op in ("call", "staticcall")

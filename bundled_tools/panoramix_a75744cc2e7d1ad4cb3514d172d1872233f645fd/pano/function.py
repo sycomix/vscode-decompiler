@@ -103,19 +103,15 @@ class Function(EasyCopy):
     def make_names(self):
         new_name = self.name.split("(")[0]
 
-        self.name = "{}({})".format(
-            new_name, ", ".join((p[0] + " " + p[1]) for p in self.params.values())
-        )
+        self.name = f'{new_name}({", ".join(f"{p[0]} {p[1]}" for p in self.params.values())})'
         self.color_name = "{}({})".format(
             new_name,
             ", ".join(
-                (p[0] + " " + COLOR_GREEN + p[1] + ENDC) for p in self.params.values()
+                f"{p[0]} {COLOR_GREEN}{p[1]}{ENDC}" for p in self.params.values()
             ),
         )
 
-        self.abi_name = "{}({})".format(
-            new_name, ",".join(p[0] for p in self.params.values())
-        )
+        self.abi_name = f'{new_name}({",".join(p[0] for p in self.params.values())})'
 
     def ast_length(self):
         if self.trace is not None:
@@ -132,11 +128,7 @@ class Function(EasyCopy):
         if self.trace is None:
             return 0
 
-        if "selfdestruct" in str(self.trace):
-            return -1
-
-        else:
-            return self.ast_length()[1]
+        return -1 if "selfdestruct" in str(self.trace) else self.ast_length()[1]
 
     def make_params(self):
         """
@@ -311,7 +303,7 @@ class Function(EasyCopy):
             else:
                 res = list(pprint_logic(self.trace))
 
-            if len(res) == 0:
+            if not res:
                 res = ["  stop"]
 
             return header + res
@@ -365,10 +357,7 @@ class Function(EasyCopy):
         assert len(self.trace) > 0
 
         def find_returns(exp):
-            if opcode(exp) == "return":
-                return [exp]
-            else:
-                return []
+            return [exp] if opcode(exp) == "return" else []
 
         exp_text = []
 
@@ -484,18 +473,15 @@ class Function(EasyCopy):
                             return None
 
                         loc = find_f(e, l2)
-                        if not loc or (prev_loc != -1 and prev_loc != loc):
+                        if not loc or prev_loc not in [-1, loc]:
                             break
                         prev_loc = loc
 
                     else:
                         self.getter = ("struct", ("loc", loc))
 
-            else:
-                pass
-
         if self.getter:
-            exp_text.append((f"getter for", prettify(self.getter)))
+            exp_text.append(("getter for", prettify(self.getter)))
 
         explain_text("function traits", exp_text)
 
